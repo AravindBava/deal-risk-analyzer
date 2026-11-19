@@ -39,16 +39,29 @@ def triangle_from_pct(u, low, likely, high):
         return low + math.sqrt(u * (high - low) * (likely - low))
     return high - math.sqrt((1 - u) * (high - low) * (high - likely))
 
-def run_simulation(deal, n=10000, seed=42, risks=RISKS):
+
+def draw_risks(rng, L, risks):
+    # Five bell-curve numbers that move together the way CORR says
+    z = L @ rng.standard_normal(5)
+    draws = {}
+    for i in range(5):
+        name = RISK_ORDER[i]
+        draws[name] = triangle_from_pct(normal_to_pct(z[i]), *risks[name])
+    return draws
+
+
+def run_simulation(deal, n=10000, seed=42, risks=RISKS, corr=CORR):
     rng = np.random.default_rng(seed)
+    L = np.linalg.cholesky(corr)
     profits = []
     first_year = []
-    for sim in range(n):
-        rent = draw(rng, *risks["rent"])
-        vacancy = draw(rng, *risks["vacancy"]) + (deal["vacancy"] - RISKS["vacancy"][1])
-        repairs = draw(rng, *risks["repairs"]) + (deal["repairs_pct"] - RISKS["repairs"][1])
-        tax = draw(rng, *risks["tax"])
-        appreciation = draw(rng, *risks["appreciation"])
+    for _ in range(n):
+        d = draw_risks(rng, L, risks)
+        rent = d["rent"]
+        vacancy = d["vacancy"] + (deal["vacancy"] - RISKS["vacancy"][1])
+        repairs = d["repairs"] + (deal["repairs_pct"] - RISKS["repairs"][1])
+        tax = d["tax"]
+        appreciation = d["appreciation"]
 
         this_sim = dict(deal)
         this_sim["monthly_rent"] = deal["monthly_rent"] * (1 + rent)

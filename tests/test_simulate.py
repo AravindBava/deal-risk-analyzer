@@ -1,5 +1,6 @@
+import numpy as np
 from pytest import approx
-from simulate import run_simulation, normal_to_pct, triangle_from_pct
+from simulate import run_simulation, normal_to_pct, triangle_from_pct, CORR, RISKS, draw_risks
 from deal import TEST_DEAL
 
 
@@ -31,3 +32,15 @@ def test_triangle_ends_and_middle():
 
 def test_triangle_lopsided():
     assert triangle_from_pct(0.5, 0.02, 0.05, 0.12) == approx(0.0608, abs=0.0001)
+
+
+def test_draws_follow_correlation():
+    rng = np.random.default_rng(7)
+    L = np.linalg.cholesky(CORR)
+    rents = []
+    growth = []
+    for _ in range(5000):
+        d = draw_risks(rng, L, RISKS)
+        rents.append(d["rent"])
+        growth.append(d["appreciation"])
+    assert np.corrcoef(rents, growth)[0, 1] == approx(0.5, abs=0.05)
